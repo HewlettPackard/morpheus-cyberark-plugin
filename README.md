@@ -70,4 +70,4 @@ The plugin JAR will be written to `build/libs/`.
 
 ## License
 
-No `LICENSE` file is currently included in this repository.
+Copyright 2024 Morpheus Data, LLC. Licensed under the [Apache License, Version 2.0](LICENSE).
