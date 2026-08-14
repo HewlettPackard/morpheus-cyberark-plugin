@@ -1,73 +1,130 @@
 # Morpheus CyberArk Conjur Plugin
 
-This plugin provides secret and credential store integration between [CyberArk Conjur](https://www.cyberark.com/products/identity-security-platform/conjur-secrets-manager/) and [Morpheus](https://morpheusdata.com). It enables Conjur-backed Morpheus credentials and Conjur-backed Cypher secrets from within the Morpheus platform.
+The Morpheus CyberArk Conjur Plugin integrates Morpheus with CyberArk Conjur to enable secure credential retrieval and secret storage. It provides a credential provider for using Conjur-managed credentials in Morpheus automation, and a Cypher module that maps Morpheus Cypher paths to Conjur secrets.
 
-## Requirements
+## Table of Contents
 
-| Component | Minimum Version |
-|-----------|----------------|
-| Morpheus | 7.0.3 |
+- [Features](#features)
+- [Requirements](#requirements)
+- [Repository structure](#repository-structure)
+- [Building the plugin](#building-the-plugin)
+- [License](#license)
+- [Installing](#installing)
+- [Detailed Usage Steps](#detailed-usage-steps)
+- [API Endpoints](#api-endpoints)
 
-## Installation
-
-1. Download the latest `.jar` from the [Releases](https://github.com/HewlettPackard/morpheus-cyberark-plugin/releases) page, or [build it yourself](#building).
-2. In Morpheus, navigate to **Administration → Integrations → Plugins**.
-3. Click **Browse** and upload the `.jar` file.
-4. The **Conjur** credential store integration and **conjur** Cypher mount will appear after the plugin loads.
-
-## Configuration
-
-Configure the plugin settings in Morpheus (**Administration → Integrations → Plugins**) with the default Conjur connection values:
-
-| Field | Description |
-|-------|-------------|
-| **Conjur API Url** | Full URL of the Conjur server, e.g. `https://example.conjur.server:8443`. |
-| **Conjur Username** | Conjur user or host identity used for authentication. |
-| **Conjur Username API Key** | API key for the Conjur identity. |
-| **Conjur Organization** | Conjur account or organization name. |
-| **Clear Secret On Deletion** | When enabled, deletes clear the remote value by writing an empty secret. |
-
-When adding a Conjur credential store integration in Morpheus, the integration can override the plugin defaults:
-
-| Field | Description |
-|-------|-------------|
-| **API Url** | Conjur API endpoint URL. Overrides the plugin value when set. |
-| **Username** | Conjur user or host identity. Overrides the plugin value when set. |
-| **API Key** | API key for the Conjur identity. Overrides the plugin value when set. |
-| **Organization** | Conjur account or organization name. Overrides the plugin value when set. |
-| **Secret Path** | Optional path prefix for Morpheus-managed credentials, e.g. `morpheus-credentials/`. |
-| **Clear Secret On Deletion** | When enabled, deletes clear the remote value by writing an empty secret. |
+---
 
 ## Features
 
-### Credential Store
+### Conjur Credential Provider
 
-The plugin registers a `CredentialProvider` named **Conjur**. Supported operations include:
+Use CyberArk Conjur as a credential store for Morpheus integrations and automation. Credentials are retrieved from Conjur at runtime rather than stored in Morpheus.
 
-- Validate Conjur connectivity and authentication with `/whoami`.
-- Create Morpheus credential data as Conjur variable secrets.
-- Load credential data from Conjur on demand.
-- Update credential data in Conjur.
-- Optionally clear the Conjur secret value when a Morpheus credential is deleted.
-- Use integration-level connection settings or inherit defaults from the plugin settings.
+### Conjur Cypher Module
 
-### Cypher Secrets
+Map Morpheus Cypher key paths to Conjur secret paths. Supports read, write, and delete operations on secrets stored in Conjur, accessible via the `conjur/` Cypher prefix in Morpheus.
 
-The plugin registers a `CypherModuleProvider` with the **conjur** mount point. Supported operations include:
+---
 
-- Read secrets from Conjur through Morpheus Cypher paths mounted under `conjur`.
-- Write Cypher secret values to Conjur variables.
-- Avoid persisting Conjur-backed values in the Morpheus datastore on read.
-- Optionally clear the Conjur secret value when a Cypher secret is deleted.
+## Requirements
 
-## Building
+| Requirement | Version |
+|-------------|---------|
+| Morpheus | 7.0.3 or later |
+| Java | 11 or later |
+| Gradle | Use the included Gradle wrapper (`./gradlew`) |
 
-```bash
-./gradlew shadowJar
+Additional prerequisites:
+
+- A running CyberArk Conjur server accessible over HTTPS from the Morpheus appliance
+- A Conjur user account and API key with read (and optionally write) access to the target secrets
+- The Conjur organisation (account) name
+
+---
+
+## Repository structure
+
+```
+src/main/groovy/com/morpheusdata/cyberark/
+├── CyberArkPlugin.groovy           - Plugin entry point; registers providers and plugin-level settings (URL, username, API key, organisation)
+├── ConjurCredentialProvider.groovy - CredentialProvider implementation; retrieves credentials from Conjur at runtime
+├── ConjurCypherProvider.groovy     - CypherModuleProvider implementation; wires the Conjur Cypher module
+└── ConjurCypherModule.groovy       - AbstractCypherModule implementation; read/write/delete secrets via Conjur API
+build.gradle, gradle.properties     - Build configuration and plugin metadata
 ```
 
-The plugin JAR will be written to `build/libs/`.
+---
+
+## Building the plugin
+
+Run the following command to compile and package the plugin jar:
+
+```bash
+./gradlew clean build
+```
+
+The packaged jar will be written to `build/libs/`.
+
+To execute tests, use the following command:
+
+```bash
+./gradlew test
+```
+
+---
 
 ## License
 
-Copyright 2024 Morpheus Data, LLC. Licensed under the [Apache License, Version 2.0](LICENSE).
+This project is licensed under the Apache License 2.0.
+
+See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Installing
+
+1. Build the plugin (see [Building the plugin](#building-the-plugin)) or download a released jar.
+2. In Morpheus, navigate to **Administration > Integrations > Plugins**.
+3. Click **Add** and upload the `morpheus-cyberark-plugin-<version>.jar` from `build/libs/`.
+4. Navigate to **Administration > Integrations > Plugins**, open the CyberArk Conjur plugin settings, and provide the **Conjur API Url**, **Conjur Username**, **Conjur Username API Key**, and **Conjur Organization**.
+
+---
+
+## Detailed Usage Steps
+
+### Configuring the Plugin
+
+1. After installing, go to **Administration > Integrations > Plugins**.
+2. Open the CyberArk Conjur plugin and click **Edit Settings**.
+3. Enter:
+   - **Conjur API Url** — full URL including port, e.g. `https://conjur.example.com:8443`
+   - **Conjur Username** — the Conjur identity used to authenticate
+   - **Conjur Username API Key** — the API key for the above identity
+   - **Conjur Organization** — the Conjur account name
+   - **Clear Secret On Deletion** — if checked, secrets are deleted from Conjur when removed from Morpheus Cypher
+4. Save.
+
+### Using Conjur Secrets in Cypher
+
+1. Go to **Services > Cypher > Add**.
+2. Use the `conjur/` mount prefix and provide the path to the secret in Conjur.
+3. The plugin retrieves the secret value from Conjur at read time.
+
+### Using Conjur as a Credential Provider
+
+1. When adding a Morpheus integration that supports credentials, select **CyberArk Conjur** as the credential type.
+2. Provide the Conjur path to the credential secret. Morpheus retrieves the credential from Conjur at runtime.
+
+---
+
+## API Endpoints
+
+This plugin communicates with the **CyberArk Conjur REST API** at the configured Conjur API Url. All calls use HTTPS.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `{conjurUrl}/authn/{account}/{username}/authenticate` | POST | Authenticate and obtain an access token |
+| `{conjurUrl}/secrets/{account}/variable/{secretPath}` | GET | Read a secret value |
+| `{conjurUrl}/secrets/{account}/variable/{secretPath}` | POST | Write a secret value |
+| `{conjurUrl}/secrets/{account}/variable/{secretPath}` | DELETE | Delete a secret |
